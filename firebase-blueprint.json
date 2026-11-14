@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated user account and preferred PhotoNest mode",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Firebase Auth UID" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "preferredMode": { "type": "string", "enum": ["unset", "server", "client"] },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Must be FieldValue.serverTimestamp()" },
+        "updatedAt": { "type": "string", "format": "date-time", "description": "Must be FieldValue.serverTimestamp()" }
+      },
+      "required": ["userId", "displayName", "preferredMode", "createdAt", "updatedAt"]
+    },
+    "PhotoServer": {
+      "title": "PhotoServer",
+      "description": "Registered personal PhotoNest storage server device",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "serverName": { "type": "string" },
+        "hostAddress": { "type": "string" },
+        "port": { "type": "integer" },
+        "certFingerprint": { "type": "string" },
+        "pairingCodeHash": { "type": "string" },
+        "isOnline": { "type": "boolean" },
+        "storageLabel": { "type": "string" },
+        "totalBytes": { "type": "integer" },
+        "usedBytes": { "type": "integer" },
+        "availableBytes": { "type": "integer" },
+        "relayMode": { "type": "string", "enum": ["lan", "vpn", "relay"] },
+        "lastHeartbeat": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "serverName",
+        "hostAddress",
+        "port",
+        "certFingerprint",
+        "pairingCodeHash",
+        "isOnline",
+        "storageLabel",
+        "totalBytes",
+        "usedBytes",
+        "availableBytes",
+        "relayMode",
+        "lastHeartbeat",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "PairedDevice": {
+      "title": "PairedDevice",
+      "description": "Authorized client smartphone paired with a PhotoNest server",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "serverId": { "type": "string" },
+        "deviceName": { "type": "string" },
+        "deviceModel": { "type": "string" },
+        "status": { "type": "string", "enum": ["active", "revoked"] },
+        "lastSeenAt": { "type": "string", "format": "date-time" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "serverId", "deviceName", "deviceModel", "status", "lastSeenAt", "createdAt", "updatedAt"]
+    },
+    "ServerMediaMeta": {
+      "title": "ServerMediaMeta",
+      "description": "Synchronized metadata index of a photo or video stored on the user's PhotoNest server",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "serverId": { "type": "string" },
+        "fileName": { "type": "string" },
+        "mimeType": { "type": "string" },
+        "isVideo": { "type": "boolean" },
+        "sizeBytes": { "type": "integer" },
+        "width": { "type": "integer" },
+        "height": { "type": "integer" },
+        "durationMs": { "type": "integer" },
+        "takenAtMillis": { "type": "integer" },
+        "sha256Hash": { "type": "string" },
+        "sourceBucket": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "isArchived": { "type": "boolean" },
+        "isTrashed": { "type": "boolean" },
+        "locationName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "userId",
+        "serverId",
+        "fileName",
+        "mimeType",
+        "isVideo",
+        "sizeBytes",
+        "width",
+        "height",
+        "durationMs",
+        "takenAtMillis",
+        "sha256Hash",
+        "sourceBucket",
+        "isFavorite",
+        "isArchived",
+        "isTrashed",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Per-user profile and mode preference"
+    },
+    "/users/{userId}/servers/{serverId}": {
+      "schema": { "$ref": "#/entities/PhotoServer" },
+      "description": "Personal PhotoNest server registration and live health/endpoint metadata"
+    },
+    "/users/{userId}/devices/{deviceId}": {
+      "schema": { "$ref": "#/entities/PairedDevice" },
+      "description": "Paired client devices authorized to access the user's servers"
+    },
+    "/users/{userId}/servers/{serverId}/catalog/{mediaId}": {
+      "schema": { "$ref": "#/entities/ServerMediaMeta" },
+      "description": "Media metadata index synchronized from the user's server"
+    }
+  }
+}

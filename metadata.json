@@ -1,0 +1,6 @@
+{
+  "name": "PhotoNest",
+  "description": "Personal photo and video storage server and Google Photos-style gallery client with local/SD card storage, automatic backup, and encrypted Google account pairing.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

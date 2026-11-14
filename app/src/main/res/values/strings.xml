@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">PhotoNest</string>
+    <string name="tagline">Your phone, your private photo cloud</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="mode_server_title">Set Up Photo Server</string>
+    <string name="mode_server_subtitle">Turn this smartphone into your personal encrypted photo &amp; video vault using internal storage or a microSD card.</string>
+    <string name="mode_client_title">Access My Photos</string>
+    <string name="mode_client_subtitle">Automatically back up photos &amp; videos to your personal server and browse your library anywhere.</string>
+    <string name="server_always_on_notice">Server requirement: Your PhotoNest server phone must remain powered on and connected to Wi-Fi or your VPN/relay network for remote access and backups.</string>
+    <string name="nav_photos">Photos</string>
+    <string name="nav_collections">Collections</string>
+    <string name="nav_create">Create</string>
+    <string name="nav_search">Search</string>
+    <string name="notification_channel_server">PhotoNest Server Status</string>
+    <string name="notification_channel_backup">PhotoNest Backup Progress</string>
+</resources>

@@ -1,0 +1,189 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global safety net: deny everything by default
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidTimestamp(ts) {
+      return ts is timestamp && ts <= request.time;
+    }
+
+    function isValidUserProfile(data, userId) {
+      return data.userId == userId &&
+        data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120 &&
+        (!('email' in data) || (data.email is string && data.email.size() <= 200)) &&
+        (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+        data.preferredMode in ['unset', 'server', 'client'] &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPhotoServer(data, userId) {
+      return data.userId == userId &&
+        data.serverName is string && data.serverName.size() >= 1 && data.serverName.size() <= 100 &&
+        data.hostAddress is string && data.hostAddress.size() >= 1 && data.hostAddress.size() <= 255 &&
+        data.port is int && data.port >= 1024 && data.port <= 65535 &&
+        data.certFingerprint is string && data.certFingerprint.size() >= 16 && data.certFingerprint.size() <= 128 &&
+        data.pairingCodeHash is string && data.pairingCodeHash.size() >= 8 && data.pairingCodeHash.size() <= 128 &&
+        data.isOnline is bool &&
+        data.storageLabel is string && data.storageLabel.size() >= 1 && data.storageLabel.size() <= 120 &&
+        data.totalBytes is int && data.totalBytes >= 0 &&
+        data.usedBytes is int && data.usedBytes >= 0 &&
+        data.availableBytes is int && data.availableBytes >= 0 &&
+        data.relayMode in ['lan', 'vpn', 'relay'] &&
+        isValidTimestamp(data.lastHeartbeat) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidPairedDevice(data, userId) {
+      return data.userId == userId &&
+        isValidId(data.serverId) &&
+        data.deviceName is string && data.deviceName.size() >= 1 && data.deviceName.size() <= 100 &&
+        data.deviceModel is string && data.deviceModel.size() >= 1 && data.deviceModel.size() <= 100 &&
+        data.status in ['active', 'revoked'] &&
+        isValidTimestamp(data.lastSeenAt) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    function isValidServerMediaMeta(data, userId, serverId) {
+      return data.userId == userId &&
+        data.serverId == serverId &&
+        data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 255 &&
+        data.mimeType is string && data.mimeType.size() >= 3 && data.mimeType.size() <= 120 &&
+        data.isVideo is bool &&
+        data.sizeBytes is int && data.sizeBytes >= 0 &&
+        data.width is int && data.width >= 0 &&
+        data.height is int && data.height >= 0 &&
+        data.durationMs is int && data.durationMs >= 0 &&
+        data.takenAtMillis is int && data.takenAtMillis >= 0 &&
+        data.sha256Hash is string && data.sha256Hash.size() >= 8 && data.sha256Hash.size() <= 128 &&
+        data.sourceBucket is string && data.sourceBucket.size() >= 1 && data.sourceBucket.size() <= 120 &&
+        data.isFavorite is bool &&
+        data.isArchived is bool &&
+        data.isTrashed is bool &&
+        (!('locationName' in data) || (data.locationName is string && data.locationName.size() <= 160)) &&
+        isValidTimestamp(data.createdAt) &&
+        isValidTimestamp(data.updatedAt);
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if isOwner(userId);
+
+      allow create: if isOwner(userId) && isValidId(userId) &&
+        incoming().keys().hasAll(['userId', 'displayName', 'preferredMode', 'createdAt', 'updatedAt']) &&
+        incoming().keys().hasOnly(['userId', 'displayName', 'email', 'photoUrl', 'preferredMode', 'createdAt', 'updatedAt']) &&
+        isValidUserProfile(incoming(), userId);
+
+      allow update: if isOwner(userId) && isValidId(userId) &&
+        incoming().userId == existing().userId &&
+        incoming().createdAt == existing().createdAt &&
+        isValidUserProfile(incoming(), userId) &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'email', 'photoUrl', 'preferredMode', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      match /servers/{serverId} {
+        allow get: if isOwner(userId) && isValidId(serverId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(serverId) &&
+          incoming().keys().hasAll([
+            'userId', 'serverName', 'hostAddress', 'port', 'certFingerprint',
+            'pairingCodeHash', 'isOnline', 'storageLabel', 'totalBytes',
+            'usedBytes', 'availableBytes', 'relayMode', 'lastHeartbeat', 'createdAt', 'updatedAt'
+          ]) &&
+          incoming().keys().hasOnly([
+            'userId', 'serverName', 'hostAddress', 'port', 'certFingerprint',
+            'pairingCodeHash', 'isOnline', 'storageLabel', 'totalBytes',
+            'usedBytes', 'availableBytes', 'relayMode', 'lastHeartbeat', 'createdAt', 'updatedAt'
+          ]) &&
+          isValidPhotoServer(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(serverId) &&
+          incoming().userId == existing().userId &&
+          incoming().createdAt == existing().createdAt &&
+          isValidPhotoServer(incoming(), userId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly([
+            'serverName', 'hostAddress', 'port', 'certFingerprint', 'pairingCodeHash',
+            'isOnline', 'storageLabel', 'totalBytes', 'usedBytes', 'availableBytes',
+            'relayMode', 'lastHeartbeat', 'updatedAt'
+          ]);
+
+        allow delete: if isOwner(userId) && isValidId(serverId);
+
+        match /catalog/{mediaId} {
+          allow get: if isOwner(userId) && isValidId(serverId) && isValidId(mediaId);
+          allow list: if isOwner(userId) && isValidId(serverId);
+
+          allow create: if isOwner(userId) && isValidId(serverId) && isValidId(mediaId) &&
+            incoming().keys().hasAll([
+              'userId', 'serverId', 'fileName', 'mimeType', 'isVideo', 'sizeBytes',
+              'width', 'height', 'durationMs', 'takenAtMillis', 'sha256Hash',
+              'sourceBucket', 'isFavorite', 'isArchived', 'isTrashed', 'createdAt', 'updatedAt'
+            ]) &&
+            incoming().keys().hasOnly([
+              'userId', 'serverId', 'fileName', 'mimeType', 'isVideo', 'sizeBytes',
+              'width', 'height', 'durationMs', 'takenAtMillis', 'sha256Hash',
+              'sourceBucket', 'isFavorite', 'isArchived', 'isTrashed', 'locationName', 'createdAt', 'updatedAt'
+            ]) &&
+            isValidServerMediaMeta(incoming(), userId, serverId);
+
+          allow update: if isOwner(userId) && isValidId(serverId) && isValidId(mediaId) &&
+            incoming().userId == existing().userId &&
+            incoming().serverId == existing().serverId &&
+            incoming().createdAt == existing().createdAt &&
+            isValidServerMediaMeta(incoming(), userId, serverId) &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'fileName', 'isFavorite', 'isArchived', 'isTrashed', 'locationName', 'updatedAt'
+            ]);
+
+          allow delete: if isOwner(userId) && isValidId(serverId) && isValidId(mediaId);
+        }
+      }
+
+      match /devices/{deviceId} {
+        allow get: if isOwner(userId) && isValidId(deviceId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(deviceId) &&
+          incoming().keys().hasAll(['userId', 'serverId', 'deviceName', 'deviceModel', 'status', 'lastSeenAt', 'createdAt', 'updatedAt']) &&
+          incoming().keys().hasOnly(['userId', 'serverId', 'deviceName', 'deviceModel', 'status', 'lastSeenAt', 'createdAt', 'updatedAt']) &&
+          isValidPairedDevice(incoming(), userId);
+
+        allow update: if isOwner(userId) && isValidId(deviceId) &&
+          incoming().userId == existing().userId &&
+          incoming().serverId == existing().serverId &&
+          incoming().createdAt == existing().createdAt &&
+          isValidPairedDevice(incoming(), userId) &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['deviceName', 'status', 'lastSeenAt', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(deviceId);
+      }
+    }
+  }
+}
